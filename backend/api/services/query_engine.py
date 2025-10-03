@@ -9,7 +9,7 @@ def execute_cached_query(query_str: str, engine_instance):
 
 class QueryEngine:
     def __init__(self, connection_string: str):
-        self.schema = SchemaDiscovery().analyze_database(connection_string) [cite: 63]
+        self.schema = SchemaDiscovery().analyze_database(connection_string)
         # Connection pooling is handled by SQLAlchemy's engine [cite: 196]
         # self.db_engine = create_engine(connection_string, pool_size=10)
         # self.vector_store = ... 
@@ -87,4 +87,4 @@ class QueryEngine:
         Validates the generated SQL to prevent malicious commands. 
         """
         if not sql.strip().lower().startswith("select"):
-            raise SecurityException("Invalid query. Only SELECT statements are allowed.")
+            raise Exception("Invalid query. Only SELECT statements are allowed.")
