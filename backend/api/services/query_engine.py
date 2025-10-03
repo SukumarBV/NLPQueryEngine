@@ -1,90 +1,97 @@
-import time
-from functools import lru_cache
-from .schema_discovery import SchemaDiscovery
+# backend/api/services/query_engine.py (Final LLM Version)
 
-# Simple in-memory cache with LRU policy for frequent queries [cite: 195]
-@lru_cache(maxsize=1000)
-def execute_cached_query(query_str: str, engine_instance):
-    return engine_instance._execute_query(query_str)
+import time
+import os
+import json
+from sqlalchemy import create_engine, text
+import google.generativeai as genai
+
+from .schema_discovery import SchemaDiscovery
 
 class QueryEngine:
     def __init__(self, connection_string: str):
+        # Configure the Gemini API
+        try:
+            genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+            self.llm = genai.GenerativeModel('gemini-pro')
+        except Exception as e:
+            raise Exception(f"Failed to configure Gemini AI. Check your API key. Error: {e}")
+        
+        # Discover schema and create DB engine
         self.schema = SchemaDiscovery().analyze_database(connection_string)
-        # Connection pooling is handled by SQLAlchemy's engine [cite: 196]
-        # self.db_engine = create_engine(connection_string, pool_size=10)
-        # self.vector_store = ... 
+        self.db_engine = create_engine(connection_string, pool_size=10)
+        print("Query Engine Initialized with LLM.")
 
     def process_query(self, user_query: str) -> dict:
-        """
-        Processes a query through a pipeline of caching, classification, and execution.
-        """
         start_time = time.time()
         
-        try:
-            # Attempt to retrieve from cache
-            result, query_type = execute_cached_query(user_query, self)
-            is_cache_hit = True
-        except Exception:
-            # Cache miss, process the query
-            query_type = self._classify_query(user_query)
-            result, _ = self._execute_query(user_query, query_type)
-            is_cache_hit = False
+        query_type = self._classify_query(user_query)
+        results = None
+
+        if query_type == "SQL":
+            try:
+                # Generate SQL using the LLM
+                sql_query = self._generate_sql(user_query)
+                self._validate_sql_query(sql_query) # Security check
+                
+                # Execute the generated SQL
+                with self.db_engine.connect() as connection:
+                    result_proxy = connection.execute(text(sql_query))
+                    results = [dict(row._mapping) for row in result_proxy]
+                    
+            except Exception as e:
+                return {"error": f"An error occurred: {e}"}
+
+        else: # DOCUMENT or HYBRID
+            results = f"{query_type} search is not fully implemented yet."
 
         return {
-            "results": result,
+            "results": results,
             "query_type": query_type,
             "performance_metrics": {
                 "response_time_seconds": round(time.time() - start_time, 2),
-                "cache_hit": is_cache_hit
-            }
+                "cache_hit": False
+            },
+            "generated_sql": sql_query if 'sql_query' in locals() else None
         }
 
-    def _execute_query(self, user_query: str, query_type: str = None):
-        """Internal execution logic."""
-        if not query_type:
-            query_type = self._classify_query(user_query)
+    def _generate_sql(self, user_query: str) -> str:
+        """Generates SQL from a user query using an LLM."""
+        
+        # Create a detailed prompt for the LLM
+        prompt = f"""
+        You are an expert Text-to-SQL model. Your task is to generate a single, executable SQL query for a PostgreSQL database.
+        You must only output the SQL query and nothing else. Do not include any explanations or markdown formatting.
 
-        if query_type == "SQL":
-            sql_query = self._generate_sql(user_query)
-            self._validate_sql_query(sql_query) # Prevent SQL injection [cite: 100]
-            # optimized_sql = self.optimize_sql_query(sql_query)
-            # db_results = self.db_engine.execute(optimized_sql)
-            return f"Executed SQL: {sql_query}", query_type
+        Database Schema:
+        {json.dumps(self.schema, indent=2)}
+
+        User Question:
+        "{user_query}"
+
+        SQL Query:
+        """
         
-        elif query_type == "DOCUMENT":
-            # doc_results = self.vector_store.search(user_query)
-            return "Searched documents for relevant content.", query_type
+        print(f"--- Generating SQL for query: {user_query} ---")
+        response = self.llm.generate_content(prompt)
         
-        else: # HYBRID
-            return "Executed a hybrid search on database and documents.", query_type
+        # Clean up the LLM's response to get only the SQL
+        sql_query = response.text.strip()
+        if sql_query.startswith("```sql"):
+            sql_query = sql_query[6:]
+        if sql_query.endswith("```"):
+            sql_query = sql_query[:-3]
+        
+        print(f"--- Generated SQL: {sql_query} ---")
+        return sql_query.strip()
 
     def _classify_query(self, user_query: str) -> str:
-        """
-        Classifies query as SQL, DOCUMENT, or HYBRID. [cite: 67]
-        """
-        # Using keywords for simple classification. An LLM would be more robust.
+        # This can also be improved with an LLM call in the future
         doc_keywords = ["review", "skills", "resume", "performance"]
-        sql_keywords = ["how many", "average", "list", "top 5", "department"]
-
         is_doc = any(kw in user_query.lower() for kw in doc_keywords)
-        is_sql = any(kw in user_query.lower() for kw in sql_keywords)
-
-        if is_doc and is_sql: return "HYBRID"
-        if is_doc: return "DOCUMENT"
+        if is_doc: return "HYBRID" # Assume most doc queries also need DB context
         return "SQL"
 
-    def _generate_sql(self, user_query: str) -> str:
-        """
-        Generates SQL from natural language using an LLM.
-        """
-        prompt = f"Given schema: {self.schema}, generate a SQL query for: '{user_query}'"
-        # response = call_llm(prompt) # Using a free-tier API or open-source model [cite: 399]
-        if "how many employees" in user_query.lower(): return "SELECT COUNT(*) FROM employees;"
-        return "SELECT * FROM staff LIMIT 10;"
-
     def _validate_sql_query(self, sql: str):
-        """
-        Validates the generated SQL to prevent malicious commands. 
-        """
         if not sql.strip().lower().startswith("select"):
-            raise Exception("Invalid query. Only SELECT statements are allowed.")
+            raise ValueError("LLM generated an invalid query. Only SELECT statements are allowed.")
