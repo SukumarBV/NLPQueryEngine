@@ -1,1 +1,36 @@
-node_modules
+# --- Secrets and Environment Files ---
+# Ignore all .env files to keep API keys and secrets secure
+*.env
+
+
+# --- Python ---
+# Ignore the virtual environment folder
+.venv/
+
+# Ignore Python cache files
+__pycache__/
+*.pyc
+
+# Ignore distribution and build artifacts
+/dist/
+/build/
+*.egg-info/
+
+
+# --- Node.js ---
+# Ignore the massive node_modules folder
+/node_modules/
+
+# Ignore the frontend build output
+/frontend/build/
+
+# Ignore log files
+npm-debug.log*
+
+
+# --- OS and Editor Specific ---
+# macOS
+.DS_Store
+
+# VS Code
+.vscode/

@@ -13,7 +13,7 @@ class QueryEngine:
         # Configure the Gemini API
         try:
             genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-            self.llm = genai.GenerativeModel('gemini-pro')
+            self.llm = genai.GenerativeModel('gemini-pro-latest')
         except Exception as e:
             raise Exception(f"Failed to configure Gemini AI. Check your API key. Error: {e}")
         

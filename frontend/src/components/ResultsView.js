@@ -1,42 +1,64 @@
 import React from 'react';
 
-// Corresponds to the <ResultsView> component requirement [cite: 157]
+// Corresponds to the <ResultsView> component requirement
 const ResultsView = ({ data }) => {
-    if (!data) return <div>Enter a query to see results.</div>;
+    // Initial state before any query is made
+    if (!data) {
+        return <div className="card">Enter a query to see results.</div>;
+    }
 
-    const { results, query_type, performance_metrics } = data;
+    // NEW: Handle and display errors from the backend
+    if (data.error) {
+        return <div className="card error-message"><strong>Error:</strong> {data.error}</div>;
+    }
+    
+    // Destructure data only after we know there's no error
+    const { results, query_type, performance_metrics, generated_sql } = data;
+
+    // Handle case with no results
+    if (!results || results.length === 0) {
+        return <div className="card">No results found for your query.</div>;
+    }
 
     return (
-        <div className="results-container">
+        <div className="card results-container">
+            {/* NEW: Use optional chaining (?.) to safely access nested properties.
+              This prevents a crash if performance_metrics is missing.
+            */}
             <div className="metrics">
-                <span>Time: {performance_metrics.response_time_seconds}s</span>
-                <span>Cache: {performance_metrics.cache_hit ? 'Hit' : 'Miss'}</span>
+                <span>Time: {performance_metrics?.response_time_seconds}s</span>
+                <span>Cache: {performance_metrics?.cache_hit ? 'Hit' : 'Miss'}</span>
             </div>
 
             {query_type === 'SQL' && (
                 <div className="sql-results">
                     <h4>Database Results</h4>
-                    {/* A component like AG-Grid would be used for a full table view with pagination */}
-                    <pre>{JSON.stringify(results, null, 2)}</pre>
+                    {/* This will now render a proper table */}
+                    <table>
+                        <thead>
+                            <tr>
+                                {results.length > 0 && Object.keys(results[0]).map(key => <th key={key}>{key}</th>)}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {results.map((row, index) => (
+                                <tr key={index}>
+                                    {Object.values(row).map((value, i) => <td key={i}>{String(value)}</td>)}
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            )}
+            
+            {generated_sql && (
+                <div className="generated-sql">
+                    <h4>Generated SQL:</h4>
+                    <pre><code>{generated_sql}</code></pre>
                 </div>
             )}
 
-            {query_type === 'DOCUMENT' && (
-                <div className="document-results">
-                    <h4>Document Results</h4>
-                    {/* Map over document results and render them in cards */}
-                    <div className="result-card">{results}</div>
-                </div>
-            )}
-            
-            {query_type === 'HYBRID' && (
-                 <div className="hybrid-results">
-                    <h4>Combined Results</h4>
-                    <p>{results}</p>
-                 </div>
-            )}
-            
-            <button>Export as CSV</button> {/* Export functionality [cite: 162] */}
+            <button>Export as CSV</button>
         </div>
     );
 };
