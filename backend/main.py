@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import os
 from dotenv import load_dotenv
 
-from .api.routes import ingestion, query, schema
+from api.routes import ingestion, query, schema
 from .api.services.query_engine import QueryEngine
 
 # Load environment variables from .env file
