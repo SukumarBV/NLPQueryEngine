@@ -1,44 +1,43 @@
+// frontend/src/components/ResultsView.js (Updated)
 import React from 'react';
 
-// Corresponds to the <ResultsView> component requirement
 const ResultsView = ({ data }) => {
-    // Initial state before any query is made
-    if (!data) {
-        return <div className="card">Enter a query to see results.</div>;
-    }
-
-    // NEW: Handle and display errors from the backend
-    if (data.error) {
-        return <div className="card error-message"><strong>Error:</strong> {data.error}</div>;
-    }
+    if (!data) return <div className="card">Enter a query to see results.</div>;
+    if (data.error) return <div className="card error-message"><strong>Error:</strong> {data.error}</div>;
     
-    // Destructure data only after we know there's no error
     const { results, query_type, performance_metrics, generated_sql } = data;
 
-    // Handle case with no results
     if (!results || results.length === 0) {
         return <div className="card">No results found for your query.</div>;
     }
 
     return (
         <div className="card results-container">
-            {/* NEW: Use optional chaining (?.) to safely access nested properties.
-              This prevents a crash if performance_metrics is missing.
-            */}
             <div className="metrics">
                 <span>Time: {performance_metrics?.response_time_seconds}s</span>
                 <span>Cache: {performance_metrics?.cache_hit ? 'Hit' : 'Miss'}</span>
             </div>
 
+            {/* --- NEW SECTION FOR DOCUMENT/HYBRID RESULTS --- */}
+            {(query_type === 'DOCUMENT' || query_type === 'HYBRID') && (
+                <div className="document-results">
+                    <h4>Document Results</h4>
+                    {results.map((item, index) => (
+                        <div key={index} className="result-card">
+                            <p>{item.content}</p>
+                            <small>Source: {item.source} (Similarity: {item.similarity.toFixed(2)})</small>
+                        </div>
+                    ))}
+                </div>
+            )}
+
+            {/* Section for SQL results */}
             {query_type === 'SQL' && (
                 <div className="sql-results">
                     <h4>Database Results</h4>
-                    {/* This will now render a proper table */}
                     <table>
                         <thead>
-                            <tr>
-                                {results.length > 0 && Object.keys(results[0]).map(key => <th key={key}>{key}</th>)}
-                            </tr>
+                            <tr>{Object.keys(results[0]).map(key => <th key={key}>{key}</th>)}</tr>
                         </thead>
                         <tbody>
                             {results.map((row, index) => (
@@ -57,7 +56,6 @@ const ResultsView = ({ data }) => {
                     <pre><code>{generated_sql}</code></pre>
                 </div>
             )}
-
             <button>Export as CSV</button>
         </div>
     );
