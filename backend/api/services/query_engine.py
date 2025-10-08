@@ -14,7 +14,6 @@ class QueryEngine:
         genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
         self.llm = genai.GenerativeModel('gemini-pro-latest')
         
-        # Store the shared document processor
         self.document_processor = document_processor
         
         self.schema = SchemaDiscovery().analyze_database(connection_string)
@@ -85,7 +84,7 @@ class QueryEngine:
             })
         return results
 
-    # ... (the other functions like _generate_sql, _classify_query, etc., remain the same)
+   
     def _generate_sql(self, user_query: str) -> str:
         prompt = f"""
         You are an expert Text-to-SQL model. Your task is to generate a single, executable SQL query for a PostgreSQL database.
