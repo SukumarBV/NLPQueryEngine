@@ -11,7 +11,6 @@ router = APIRouter()
 job_statuses: Dict[str, str] = {}
 
 @router.post("/connect-database")
-# ... (this function remains the same)
 async def connect_database(payload: Dict[str, str]):
     connection_string = payload.get("connection_string")
     if not connection_string:
@@ -44,7 +43,6 @@ async def upload_documents(background_tasks: BackgroundTasks, files: List[Upload
     return {"message": "Upload successful, processing started.", "job_id": job_id}
 
 @router.get("/ingestion-status/{job_id}")
-# ... (this function remains the same)
 async def get_ingestion_status(job_id: str):
     status = job_statuses.get(job_id)
     if not status:
