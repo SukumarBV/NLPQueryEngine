@@ -5,12 +5,8 @@ from ..services.query_engine import QueryEngine
 
 router = APIRouter()
 
-# This is a placeholder for a shared QueryEngine instance.
-# In main.py, we will manage its lifecycle.
+
 def get_query_engine():
-    # This dependency injection would be more robust in the main app setup
-    # to handle the connection string properly.
-    # For now, we assume it's initialized elsewhere.
     if not hasattr(router, "query_engine_instance"):
         raise HTTPException(status_code=503, detail="Query Engine not initialized. Connect to a database first.")
     return router.query_engine_instance
@@ -29,7 +25,7 @@ async def process_query(payload: Dict[str, str], engine: QueryEngine = Depends(g
         result = engine.process_query(user_query)
         return result
     except Exception as e:
-        # Handle errors gracefully
+        # Handle errors
         raise HTTPException(status_code=500, detail=f"An error occurred: {e}")
 
 @router.get("/query/history")
