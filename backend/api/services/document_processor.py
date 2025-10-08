@@ -36,7 +36,6 @@ class DocumentProcessor:
             job_statuses[job_id] = f"Failed: {e}"
             print(f"Job {job_id} failed: {e}")
 
-    # ... (the rest of the file, _extract_text and dynamic_chunking, remains the same)
     def _extract_text(self, file_path: str) -> (str, str):
         file_extension = Path(file_path).suffix.lower()
         if file_extension == '.pdf':
