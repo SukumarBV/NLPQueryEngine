@@ -3,7 +3,7 @@ import DatabaseConnector from './components/DatabaseConnector';
 import DocumentUploader from './components/DocumentUploader';
 import QueryPanel from './components/QueryPanel';
 import ResultsView from './components/ResultsView';
-import './App.css'; // We'll add some basic styles here
+import './App.css'; 
 
 function App() {
     const [isDbConnected, setIsDbConnected] = useState(false);
