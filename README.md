@@ -95,6 +95,3 @@ Follow these instructions to get the project up and running on your local machin
 * Implement user authentication and multi-tenancy.
 * Enhance query caching with a system like Redis for better performance.
 
-## 📄 License
-
-This project is licensed under the MIT License.
