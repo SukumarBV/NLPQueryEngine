@@ -47,12 +47,11 @@ const DocumentUploader = () => {
 
     const pollProcessingStatus = async (currentJobId) => {
         setProcessingStatus('Processing...');
-        // In a real app, you might use WebSockets, but polling is sufficient per requirements.
         const interval = setInterval(async () => {
             try {
                 const response = await fetch(`http://localhost:8000/api/ingestion-status/${currentJobId}`);
                 const data = await response.json();
-                if (data.status === 'Complete') { // This logic depends on backend status updates
+                if (data.status === 'Complete') { 
                     setProcessingStatus('All documents processed and indexed successfully.');
                     clearInterval(interval);
                 } else {
