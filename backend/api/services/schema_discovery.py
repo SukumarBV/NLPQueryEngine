@@ -27,7 +27,7 @@ class SchemaDiscovery:
                 })
             return schema_info
         except Exception as e:
-            # Graceful handling of database connection issues [cite: 99]
+     
             raise ConnectionError(f"Database connection failed: {e}")
 
     def map_natural_language_to_schema(self, query: str, schema: dict) -> dict:
@@ -35,8 +35,6 @@ class SchemaDiscovery:
         Maps natural language terms to schema elements.
         Example: "salary" -> "compensation" [cite: 55]
         """
-        # A real implementation would use embeddings for semantic matching.
-        # This is a simplified heuristic for demonstration.
         term_map = {}
         for term in ["salary", "pay", "compensation"]:
             if term in query.lower():
