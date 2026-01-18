@@ -1,8 +1,6 @@
 # --- Secrets and Environment Files ---
-# Ignore all .env files to keep API keys and secrets secure
 *.env
-
-
+backend/.env
 # --- Python ---
 # Ignore the virtual environment folder
 .venv/
