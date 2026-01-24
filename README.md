@@ -9,11 +9,11 @@ An intelligent full-stack application that allows users to ask questions in plai
 
 
 
-## 📜 Description
+## Description
 
 This project solves the problem of querying disparate data sources by providing a unified, natural language interface. Instead of writing complex SQL queries or manually searching through documents, users can simply ask questions. The system dynamically introspects any connected SQL database to understand its schema on the fly and uses a Large Language Model (LLM) to translate user questions into executable database queries. It also performs semantic vector search on an indexed corpus of documents to answer questions that can't be resolved by the database alone.
 
-## ✨ Key Features
+## Key Features
 
 * **Dynamic Schema Discovery**: Automatically analyzes and adapts to any connected PostgreSQL database schema without hard-coding, ensuring high adaptability.
 * **LLM-Powered Text-to-SQL**: Integrates Google Gemini to translate natural language questions into secure and executable SQL queries.
@@ -22,7 +22,7 @@ This project solves the problem of querying disparate data sources by providing 
 * **Asynchronous RESTful API**: A scalable backend built with FastAPI (Python) to handle concurrent user requests for data ingestion and querying.
 * **Containerized Environment**: The entire application stack (FastAPI, React, PostgreSQL) is containerized using Docker and Docker Compose for consistent, one-command deployment.
 
-## 🛠️ Technology Stack
+## Technology Stack
 
 * **Backend**: Python, FastAPI, SQLAlchemy, Google Generative AI
 * **Frontend**: React, JavaScript, HTML, CSS
@@ -30,7 +30,7 @@ This project solves the problem of querying disparate data sources by providing 
 * **Database**: PostgreSQL
 * **DevOps**: Docker, Docker Compose
 
-## 🚀 Getting Started
+## Getting Started
 
 Follow these instructions to get the project up and running on your local machine.
 
@@ -80,14 +80,14 @@ Follow these instructions to get the project up and running on your local machin
         ```
     * The application will be available at `http://localhost:3000`.
 
-## ⚙️ Usage
+## Usage
 
 1.  **Open the Web Interface**: Navigate to `http://localhost:3000`.
 2.  **Connect to Database**: Click the "Connect & Analyze" button to have the engine discover the database schema.
 3.  **Upload Documents**: (Optional) Drag and drop PDF, DOCX, or TXT files to the uploader to make them available for querying.
 4.  **Ask a Question**: Type a question in plain English (e.g., "How many employees are in Engineering?") and press "Submit Query" to see the results.
 
-## 🔮 Future Improvements
+## Future Improvements
 
 * Implement a dedicated vector database (e.g., ChromaDB, Weaviate) for more scalable document search.
 * Improve the Text-to-SQL prompt to handle more complex queries and edge cases.
