@@ -1,5 +1,6 @@
-# docker-compose.yml (Corrected Version)
-
+# Local development stack: separate backend, frontend, and database
+# containers. For a single-service production deployment (e.g. Koyeb's
+# free tier), build the root Dockerfile instead — see README.md.
 services:
   backend:
     build:
@@ -9,20 +10,27 @@ services:
       - "8000:8000"
     env_file:
       - ./backend/.env
+    environment:
+      ALLOWED_ORIGINS: "http://localhost:3000"
     depends_on:
-      - db
+      db:
+        condition: service_healthy
+    restart: unless-stopped
 
   frontend:
     build:
       context: .
       dockerfile: ./frontend/Dockerfile
+      args:
+        REACT_APP_API_URL: "http://localhost:8000"
     ports:
-      - "3000:80" # Changed to 80 to match Nginx in the container
+      - "3000:80"
     depends_on:
       - backend
+    restart: unless-stopped
 
   db:
-    image: postgres:13
+    image: postgres:16-alpine
     environment:
       POSTGRES_USER: user
       POSTGRES_PASSWORD: pass
@@ -31,6 +39,12 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data/
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d company_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
 
 volumes:
   postgres_data:

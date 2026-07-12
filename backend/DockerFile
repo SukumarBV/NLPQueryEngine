@@ -1,12 +1,16 @@
-# backend/Dockerfile (Corrected Version)
-FROM python:3.9-slim
-
+# Local-development / standalone backend image.
+# For production single-service deployment (e.g. Koyeb free tier), use the
+# root Dockerfile instead, which bundles the frontend too.
+FROM python:3.11-slim
 WORKDIR /app
 
-# The path is now relative to the main project folder
 COPY backend/requirements.txt requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY backend/ .
+RUN rm -f .env
 
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+ENV PORT=8000
+EXPOSE 8000
+
+CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000}"]

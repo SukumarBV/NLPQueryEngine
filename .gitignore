@@ -1,10 +1,10 @@
-# --- Secrets and Environment Files ---
-*.env
-backend/.env
-# --- Python ---
-# Ignore the virtual environment folder
+venv/
+backend/venv/
 .venv/
-
+__pycache__/
+*.pyc
+node_modules/
+.env
 # Ignore Python cache files
 __pycache__/
 *.pyc

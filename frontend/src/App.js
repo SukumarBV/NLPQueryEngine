@@ -3,7 +3,8 @@ import DatabaseConnector from './components/DatabaseConnector';
 import DocumentUploader from './components/DocumentUploader';
 import QueryPanel from './components/QueryPanel';
 import ResultsView from './components/ResultsView';
-import './App.css'; 
+import API_BASE_URL from './config';
+import './App.css';
 
 function App() {
     const [isDbConnected, setIsDbConnected] = useState(false);
@@ -11,17 +12,17 @@ function App() {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
 
-    const handleDbConnection = (schema) => {
+    const handleDbConnection = () => {
         setIsDbConnected(true);
     };
-    
+
     const handleQuerySubmit = async (query) => {
         setIsLoading(true);
         setError('');
         setQueryResults(null);
 
         try {
-            const response = await fetch('http://localhost:8000/api/query', {
+            const response = await fetch(`${API_BASE_URL}/api/query`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ query }),
@@ -37,7 +38,6 @@ function App() {
             setIsLoading(false);
         }
     };
-
 
     return (
         <div className="App">

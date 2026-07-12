@@ -1,19 +1,25 @@
 import React, { useState } from 'react';
+import API_BASE_URL from '../config';
 
 const DatabaseConnector = ({ onConnect }) => {
-    const [connectionString, setConnectionString] = useState('postgresql://user:pass@db:5432/company_db');
+    const [connectionString, setConnectionString] = useState('');
     const [status, setStatus] = useState({ message: 'Not connected.', color: 'gray' });
     const [schema, setSchema] = useState(null);
     const [isConnecting, setIsConnecting] = useState(false);
 
     const handleConnect = async () => {
+        if (!connectionString.trim()) {
+            setStatus({ message: 'Please enter a connection string.', color: 'red' });
+            return;
+        }
+
         setIsConnecting(true);
         setStatus({ message: 'Connecting and analyzing...', color: 'orange' });
         setSchema(null);
 
         try {
             // Step 1: Connect to the database and discover the schema
-            const connectResponse = await fetch('http://localhost:8000/api/connect-database', {
+            const connectResponse = await fetch(`${API_BASE_URL}/api/connect-database`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ connection_string: connectionString }),
@@ -28,14 +34,14 @@ const DatabaseConnector = ({ onConnect }) => {
             setSchema(connectData);
 
             // Step 2: Initialize the query engine on the backend with the connection string
-            const initResponse = await fetch('http://localhost:8000/api/initialize-engine', {
+            const initResponse = await fetch(`${API_BASE_URL}/api/initialize-engine`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ connection_string: connectionString }),
             });
 
             if (!initResponse.ok) {
-                 const initErrorData = await initResponse.json();
+                const initErrorData = await initResponse.json();
                 throw new Error(initErrorData.detail || 'Failed to initialize query engine.');
             }
 
@@ -52,7 +58,7 @@ const DatabaseConnector = ({ onConnect }) => {
     return (
         <div className="card">
             <h2>1. Connect to Database</h2>
-            <p>Enter your database connection string to begin.</p>
+            <p>Enter your PostgreSQL connection string to begin.</p>
             <div className="connector-input">
                 <input
                     type="text"
@@ -66,7 +72,7 @@ const DatabaseConnector = ({ onConnect }) => {
                 </button>
             </div>
             {status.message && <p style={{ color: status.color, marginTop: '10px' }}>Status: {status.message}</p>}
-            
+
             {/* Schema Visualization */}
             {schema && (
                 <div className="schema-view">

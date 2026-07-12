@@ -1,40 +1,42 @@
 from fastapi import APIRouter, Depends, HTTPException
-from typing import Dict, List
+from typing import Dict
 
 from ..services.query_engine import QueryEngine
 
 router = APIRouter()
 
 
-def get_query_engine():
-    if not hasattr(router, "query_engine_instance"):
-        raise HTTPException(status_code=503, detail="Query Engine not initialized. Connect to a database first.")
-    return router.query_engine_instance
+def get_query_engine() -> QueryEngine:
+    engine = getattr(router, "query_engine_instance", None)
+    if engine is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Query Engine not initialized. Connect to a database first.",
+        )
+    return engine
+
 
 @router.post("/query")
 async def process_query(payload: Dict[str, str], engine: QueryEngine = Depends(get_query_engine)):
     """
     Processes a natural language query.
-    Returns results, query type, performance metrics, and sources.
+    Returns results, query type, performance metrics, and the generated SQL (if any).
     """
-    user_query = payload.get("query")
+    user_query = (payload.get("query") or "").strip()
     if not user_query:
         raise HTTPException(status_code=400, detail="Query cannot be empty.")
-    
+
     try:
         result = engine.process_query(user_query)
         return result
     except Exception as e:
-        # Handle errors
         raise HTTPException(status_code=500, detail=f"An error occurred: {e}")
+
 
 @router.get("/query/history")
 async def get_query_history():
-    """
-
-    Gets previous queries to demonstrate caching.
-    This is a simplified implementation.
-    """
-    # lru_cache doesn't expose its keys easily, so we'll simulate.
-    # In a real app, you'd have a separate history log.
-    return {"history": ["This is a demo endpoint for query history."]}
+    """Returns the most recent queries processed by the engine, most recent first."""
+    engine = getattr(router, "query_engine_instance", None)
+    if engine is None:
+        return {"history": []}
+    return {"history": engine.get_history()}

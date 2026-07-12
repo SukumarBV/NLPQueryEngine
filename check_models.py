@@ -1,31 +1,27 @@
-import os
-import google.generativeai as genai
-from dotenv import load_dotenv
+"""
+Small diagnostic script: confirms your GEMINI_API_KEY works and lists
+the models available to it. Run locally with:
 
-# Load the .env file from the backend folder
-dotenv_path = os.path.join(os.path.dirname(__file__), 'backend', '.env')
+    python check_models.py
+"""
+import os
+
+from dotenv import load_dotenv
+from google import genai
+
+dotenv_path = os.path.join(os.path.dirname(__file__), "backend", ".env")
 load_dotenv(dotenv_path=dotenv_path)
 
+api_key = os.getenv("GEMINI_API_KEY")
+if not api_key:
+    print("Error: GEMINI_API_KEY not found in backend/.env.")
+    raise SystemExit(1)
+
 try:
-    # Configure the API with your key
-    api_key = os.getenv("GEMINI_API_KEY")
-    if not api_key:
-        print("Error: GEMINI_API_KEY not found in backend/.env file.")
-    else:
-        genai.configure(api_key=api_key)
-
-        print("Finding models that support 'generateContent'...\n")
-        
-        found_model = False
-        # List all available models
-        for m in genai.list_models():
-            # Check if the 'generateContent' method is supported
-            if 'generateContent' in m.supported_generation_methods:
-                print(f"✔️ Found compatible model: {m.name}")
-                found_model = True
-        
-        if not found_model:
-            print("❌ No compatible models found. Please check your API key and project settings in Google AI Studio.")
-
+    client = genai.Client(api_key=api_key)
+    print("Models available to this API key:\n")
+    for model in client.models.list():
+        actions = getattr(model, "supported_actions", None) or []
+        print(f"- {model.name}  (supported actions: {', '.join(actions) or 'unknown'})")
 except Exception as e:
     print(f"An error occurred: {e}")
