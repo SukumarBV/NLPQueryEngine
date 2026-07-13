@@ -1,24 +1,17 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, HTTPException
 
-from ..services.query_engine import QueryEngine
+from ..services.engine_manager import get_engine_manager
 
 router = APIRouter()
 
 
-def get_query_engine_from_app() -> QueryEngine:
-    engine = getattr(router, "query_engine_instance", None)
-    if engine is None:
-        raise HTTPException(
-            status_code=503, detail="Schema not available. Connect to a database first."
-        )
-    return engine
-
-
 @router.get("/schema")
-async def get_schema(engine: QueryEngine = Depends(get_query_engine_from_app)):
-    """
-    Returns the current discovered schema for visualization.
-    """
-    if not engine.schema or "error" in engine.schema:
-        raise HTTPException(status_code=404, detail="Schema not found or failed to load.")
-    return engine.schema
+async def get_schema():
+    """Returns the current discovered schema for visualization."""
+    manager = get_engine_manager()
+    if manager.engine is None or not manager.engine.schema:
+        raise HTTPException(
+            status_code=404,
+            detail="No schema available yet. Connect a database, upload files, or use the demo dataset first.",
+        )
+    return manager.engine.schema

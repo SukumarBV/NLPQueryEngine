@@ -1,5 +1,4 @@
 import os
-import shutil
 from pathlib import Path
 from typing import Dict, List, Tuple
 import uuid
@@ -35,7 +34,6 @@ class DocumentProcessor:
 
         if not self.client:
             job_statuses[job_id] = "Failed: GEMINI_API_KEY is not configured on the server."
-            self._cleanup(file_paths)
             return
 
         total_chunks = 0
@@ -61,17 +59,6 @@ class DocumentProcessor:
         except Exception as e:
             job_statuses[job_id] = f"Failed: {e}"
             print(f"Job {job_id} failed: {e}")
-        finally:
-            self._cleanup(file_paths)
-
-    def _cleanup(self, file_paths: List[str]):
-        if not file_paths:
-            return
-        upload_dir = os.path.dirname(file_paths[0])
-        try:
-            shutil.rmtree(upload_dir, ignore_errors=True)
-        except OSError:
-            pass
 
     def _embed_texts(self, texts: List[str], task_type: str) -> List[np.ndarray]:
         results: List[np.ndarray] = []

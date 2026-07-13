@@ -1,3 +1,4 @@
+import json
 import os
 import re
 import time
@@ -5,11 +6,10 @@ from collections import OrderedDict
 from typing import Optional
 
 import numpy as np
-from sqlalchemy import create_engine, text
 from google import genai
 
+from .datasources.base import BaseSQLDataSource
 from .document_processor import DocumentProcessor
-from .schema_discovery import SchemaDiscovery
 
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 
@@ -20,12 +20,13 @@ GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 FORBIDDEN_SQL_KEYWORDS = {
     "insert", "update", "delete", "drop", "alter", "truncate",
     "create", "grant", "revoke", "attach", "detach", "replace",
-    "exec", "execute", "call", "merge", "vacuum", "copy",
+    "exec", "execute", "call", "merge", "vacuum", "copy", "pragma",
 }
 
 DOC_KEYWORDS = [
     "review", "resume", "cv", "skills", "performance", "project",
     "document", "report", "feedback", "policy", "contract", "note",
+    "summarize", "summary",
 ]
 
 MAX_HISTORY = 50
@@ -33,23 +34,28 @@ MAX_CACHE_ENTRIES = 200
 
 
 class QueryEngine:
-    def __init__(self, connection_string: str, document_processor: DocumentProcessor):
+    """
+    Orchestrates natural-language querying against whichever SQL data
+    source is currently active (PostgreSQL, uploaded spreadsheets, or the
+    demo database) plus semantic search over any ingested documents.
+    The SQL generation/validation/caching logic is identical regardless
+    of which BaseSQLDataSource is passed in.
+    """
+
+    def __init__(self, datasource: BaseSQLDataSource, document_processor: DocumentProcessor):
         api_key = os.getenv("GEMINI_API_KEY")
         if not api_key:
             raise ValueError(
                 "GEMINI_API_KEY is not set. Add it to the server's environment variables."
             )
         self.client = genai.Client(api_key=api_key)
+        self.datasource = datasource
         self.document_processor = document_processor
-
-        self.schema = SchemaDiscovery().analyze_database(connection_string)
-        self.db_engine = create_engine(
-            connection_string, pool_size=5, max_overflow=2, pool_pre_ping=True
-        )
+        self.schema = datasource.get_schema()
 
         self._cache: "OrderedDict[str, dict]" = OrderedDict()
         self._history: list = []
-        print("Query Engine initialized with LLM and Document Processor.")
+        print(f"Query Engine initialized against {datasource.describe()}.")
 
     def process_query(self, user_query: str) -> dict:
         start_time = time.time()
@@ -74,9 +80,7 @@ class QueryEngine:
             if query_type in ("SQL", "HYBRID") and self.schema.get("tables"):
                 sql_query = self._generate_sql(user_query)
                 self._validate_sql_query(sql_query)
-                with self.db_engine.connect() as connection:
-                    result_proxy = connection.execute(text(sql_query))
-                    sql_results = [dict(row._mapping) for row in result_proxy]
+                sql_results = self.datasource.execute(sql_query)
 
             if query_type in ("DOCUMENT", "HYBRID"):
                 doc_results = self._search_documents(user_query)
@@ -153,9 +157,7 @@ class QueryEngine:
         return results
 
     def _generate_sql(self, user_query: str) -> str:
-        import json
-
-        prompt = f"""You are an expert Text-to-SQL model. Your task is to generate a single, executable, read-only SQL query for a PostgreSQL database.
+        prompt = f"""You are an expert Text-to-SQL model. Your task is to generate a single, executable, read-only SQL query for a {self.datasource.dialect} database.
 You must only output the SQL query and nothing else. Do not include any explanations or markdown formatting.
 Only ever generate a single SELECT statement. Never generate INSERT, UPDATE, DELETE, DROP, ALTER, or any other statement that modifies data or schema.
 

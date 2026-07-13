@@ -9,13 +9,42 @@ An intelligent full-stack application that lets users ask questions in plain Eng
 
 ## Description
 
-This project provides a unified, natural-language interface over two very different kinds of data: a live PostgreSQL database and a collection of uploaded documents. It dynamically introspects any connected Postgres database to understand its schema, uses the Gemini API to translate questions into SQL, and performs semantic vector search over an indexed corpus of documents to answer questions the database alone can't.
+This project provides a unified, natural-language interface over structured and unstructured data — with **zero setup required to try it**. Open the app and pick one of three ways in: connect your own PostgreSQL database, drag in your own files (CSV/XLSX/PDF/DOCX/TXT), or click "Use Demo" for an instant, preloaded sample dataset. Whichever you choose, the same engine dynamically discovers the SQL schema, uses the Gemini API to translate questions into SQL, and performs semantic vector search over any ingested documents to answer questions the database alone can't.
+
+## Screenshots
+
+This README doesn't ship with pre-rendered screenshots (none were generated for this build), but here's what to capture once you have it running locally or on Koyeb — drop the images into a `docs/` folder and reference them below:
+
+| Suggested file | What to capture |
+| --- | --- |
+| `docs/landing.png` | The "Choose Your Data Source" screen with all three cards |
+| `docs/demo-query.png` | A query + hybrid result on the Demo dataset |
+| `docs/upload-files.png` | The Upload Files screen mid-drag, with a file grouped under "Structured Data" and another under "Documents" |
+| `docs/postgres-schema.png` | The discovered schema view after connecting PostgreSQL |
+| `docs/results-export.png` | A results table with the "Export as CSV" button visible |
+
+```markdown
+![Choose Your Data Source](docs/landing.png)
+![Demo query result](docs/demo-query.png)
+```
+
+## Choose Your Data Source
+
+| | |
+|---|---|
+| 🗄 **Connect PostgreSQL** | Bring your own database. Schema is introspected automatically and natural-language → SQL just works. |
+| 📁 **Upload Files** | Drop in PDFs, Word docs, CSVs or Excel workbooks. Every CSV and every worksheet in an XLSX becomes its own queryable SQL table (via an in-memory SQLite engine); PDFs/DOCX/TXT are chunked and embedded for semantic search. Mix and match — e.g. `sales.csv` + `employees.xlsx` + `report.pdf` together. |
+| 🚀 **Try Demo** | A realistic, preloaded sample dataset (employees, departments, customers, products, orders, sales — ~500 rows) with no download, no API call, and no setup. Ask a question within seconds. |
+
+You can also layer document uploads *on top of* PostgreSQL or the demo dataset (e.g. connect Postgres, then upload a PDF report) — hybrid search will combine both automatically.
 
 ## Key Features
 
-* **Dynamic Schema Discovery** — introspects any connected PostgreSQL database (tables, columns, foreign keys) with no hard-coding.
-* **LLM-Powered Text-to-SQL** — uses Google Gemini to translate natural-language questions into read-only SQL, with keyword/statement validation before execution.
-* **Hybrid Search** — classifies each question as `SQL`, `DOCUMENT`, or `HYBRID`, and for hybrid questions actually runs both the SQL query *and* the document search, returning both result sets.
+* **Three zero-friction entry points** — PostgreSQL, file upload, or an instant offline demo dataset, unified behind one data-source abstraction (`BaseSQLDataSource` → `PostgresDataSource` / `SQLiteUploadDataSource` / `DemoDataSource`) so the query engine never needs to know which one is active.
+* **Dynamic Schema Discovery** — introspects any connected SQL backend (tables, columns, foreign keys) with no hard-coding, whether it's Postgres or a spreadsheet-derived SQLite table.
+* **LLM-Powered Text-to-SQL** — uses Google Gemini to translate natural-language questions into read-only SQL (dialect-aware for Postgres vs. SQLite), with keyword/statement validation before execution.
+* **CSV/XLSX → SQL tables** — CSVs and every worksheet in an XLSX workbook are loaded into an in-memory SQLite database via pandas, so you can ask "top 10 customers" or "average sales by region" without ever touching a database.
+* **Hybrid Search** — classifies each question as `SQL`, `DOCUMENT`, or `HYBRID`, and for hybrid questions actually runs both the SQL query *and* the document search, returning both result sets (e.g. "Which department has the highest payroll, and what does report.pdf say about it?").
 * **Document Ingestion & Indexing** — uploads PDFs/DOCX/TXT, chunks them, and embeds each chunk with the Gemini Embeddings API (no local ML model needed, so it runs comfortably on small hosts).
 * **Query Caching & History** — repeated questions are served from an in-memory cache (`cache_hit: true`) and recent queries are available via `/api/query/history`.
 * **Asynchronous RESTful API** — FastAPI backend with background-task document processing and job-status polling.
@@ -24,12 +53,26 @@ This project provides a unified, natural-language interface over two very differ
 
 ## Technology Stack
 
-* **Backend**: Python, FastAPI, SQLAlchemy, `google-genai` (Gemini API — text generation *and* embeddings)
+* **Backend**: Python, FastAPI, SQLAlchemy, `google-genai` (Gemini API — text generation *and* embeddings), pandas + openpyxl (CSV/XLSX ingestion)
 * **Frontend**: React, JavaScript, HTML, CSS
-* **Database**: PostgreSQL (bring your own — local, Koyeb Postgres, Neon, Supabase, etc.)
+* **Database**: PostgreSQL (bring your own — local, Koyeb Postgres, Neon, Supabase, etc.), or zero-setup SQLite for uploaded files / the demo dataset
 * **DevOps**: Docker, Docker Compose, Koyeb
 
 > Note: earlier versions of this project used `sentence-transformers` + `faiss-cpu` (PyTorch) for embeddings. That stack alone is several hundred MB and doesn't fit in a 512MB free-tier container, so embeddings now go through the Gemini API instead. Your `GEMINI_API_KEY` is required for both SQL generation and document search.
+
+### Architecture: pluggable data sources
+
+The query engine talks to a `BaseSQLDataSource` interface (`backend/api/services/datasources/`), not to PostgreSQL directly, so the exact same Text-to-SQL pipeline and validation logic works no matter which mode is active:
+
+```
+BaseSQLDataSource (abstract: get_schema(), execute(sql), describe())
+├── PostgresDataSource      — your own PostgreSQL connection
+└── SQLiteDataSource        — shared SQLite introspection/execution logic
+    ├── SQLiteUploadDataSource — CSV/XLSX uploads → generated SQLite tables
+    └── DemoDataSource         — preloaded offline sample dataset
+```
+
+`EngineManager` (`backend/api/services/engine_manager.py`) is a single process-wide object that owns the shared document store and whichever data source is currently active, and knows how to switch between them (`connect_postgres`, `use_demo`, `activate_uploads`, `reset`). Document search always uses the same shared store regardless of which SQL data source is active, which is what makes hybrid queries like "compare employee counts with report findings" work across a Postgres connection *and* an uploaded PDF at the same time.
 
 ## Getting Started (Local Development)
 
@@ -64,15 +107,38 @@ This project provides a unified, natural-language interface over two very differ
    ```
    and paste in your own `CREATE TABLE` / `INSERT` statements (e.g. `employees`, `departments`).
 
-5. Open **http://localhost:3000**, click **Connect & Analyze** with
-   `postgresql://user:pass@db:5432/company_db`, optionally upload some documents, then ask a question.
+5. Open **http://localhost:3000**. Click **🚀 Try Demo** for an instant sample dataset, **📁 Upload Files** to try your own CSV/XLSX/PDF/DOCX/TXT files, or **🗄 Connect PostgreSQL** with `postgresql://user:pass@db:5432/company_db` to use the database from step 4.
 
 ## Usage
 
-1. **Connect to Database** — enter a Postgres connection string and click "Connect & Analyze" to discover its schema.
-2. **Upload Documents** *(optional)* — drag & drop PDF/DOCX/TXT files; they're chunked and embedded in the background.
-3. **Ask a Question** — plain English, e.g. "How many employees are in Engineering?" or "Summarize Jane's latest performance review."
-4. **Export** — download the current result set as CSV.
+### Fastest path: the demo dataset
+1. Open the app and click **🚀 Try Demo**.
+2. Ask a question right away, e.g.:
+   * "How many employees are there?"
+   * "Top five customers by revenue"
+   * "Average salary by department"
+   * "Highest selling product"
+   * "Monthly revenue trend"
+
+### Bring your own files
+1. Click **📁 Upload Files** and drag in any mix of PDF, DOCX, TXT, CSV, or XLSX files.
+2. Wait for processing to finish (a few seconds per file) — CSV/XLSX become SQL tables automatically, PDF/DOCX/TXT become searchable passages.
+3. Ask questions like:
+   * "Show top 10 customers" (from a CSV)
+   * "Which department has the highest payroll?" (from an XLSX sheet)
+   * "Summarize report.pdf"
+   * "Compare employee counts with report findings" (hybrid: SQL + document search)
+4. You can keep adding more files at any time from the same screen.
+
+### Connect your own database
+1. Click **🗄 Connect PostgreSQL** and enter a connection string.
+2. Once connected, you can optionally add supporting documents (PDF/DOCX/TXT) alongside it — the database stays your primary SQL source, and hybrid queries pull from both.
+3. Ask questions in plain English.
+
+### Any mode
+* The banner at the top always shows your **current datasource** and lets you switch (**Change data source**) back to the picker at any time.
+* **Export** — download the current result set as CSV.
+* **Query history** and **caching** work identically across all three modes.
 
 ## Deploying to Koyeb (free tier)
 
@@ -143,9 +209,11 @@ Then open **http://localhost:8000** — both the UI and the API are served from 
 
 | Method | Path | Description |
 | --- | --- | --- |
-| `POST` | `/api/connect-database` | Discover schema for a connection string |
-| `POST` | `/api/initialize-engine` | Initialize the query engine for a connection string |
-| `POST` | `/api/upload-documents` | Upload documents for background ingestion |
+| `POST` | `/api/datasource/postgres` | Connect to PostgreSQL, discover its schema, and activate it as the query engine's data source |
+| `POST` | `/api/datasource/demo` | Activate the built-in offline demo dataset |
+| `GET` | `/api/datasource/status` | Which data source (if any) is currently active, plus its schema |
+| `POST` | `/api/datasource/reset` | Clear the active data source and any uploaded/indexed data |
+| `POST` | `/api/upload-documents` | Upload a mixed batch of files (PDF/DOCX/TXT/CSV/XLSX) for background ingestion |
 | `GET` | `/api/ingestion-status/{job_id}` | Poll ingestion job status |
 | `POST` | `/api/query` | Ask a natural-language question |
 | `GET` | `/api/query/history` | Recent queries |

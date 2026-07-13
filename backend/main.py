@@ -7,11 +7,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 
-from api.routes import ingestion, query, schema
-from api.services.document_processor import DocumentProcessor
-from api.services.query_engine import QueryEngine
-
 load_dotenv()
+
+from api.routes import datasource, ingestion, query, schema  # noqa: E402  (import after load_dotenv on purpose)
+from api.services.engine_manager import init_engine_manager  # noqa: E402
 
 # Directory containing the built React frontend (created by the Docker
 # build). When absent (e.g. running the backend alone during local
@@ -21,10 +20,9 @@ STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Create a single, shared instance of the document processor.
-    app.state.document_processor = DocumentProcessor()
-    ingestion.router.document_processor = app.state.document_processor
-    app.state.query_engine = None
+    # Single shared manager for the document store + whichever SQL data
+    # source (Postgres / uploads / demo) is currently active.
+    init_engine_manager()
     print("FastAPI application started.")
     yield
 
@@ -44,29 +42,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
-@app.post("/api/initialize-engine")
-async def initialize_engine(payload: dict):
-    connection_string = payload.get("connection_string")
-    if not connection_string:
-        raise HTTPException(status_code=400, detail="Connection string is required.")
-
-    try:
-        query_engine_instance = QueryEngine(
-            connection_string=connection_string,
-            document_processor=app.state.document_processor,
-        )
-        app.state.query_engine = query_engine_instance
-
-        query.router.query_engine_instance = query_engine_instance
-        schema.router.query_engine_instance = query_engine_instance
-
-        print("Query engine initialized successfully.")
-        return {"message": "Query engine initialized successfully."}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to initialize query engine: {e}")
-
-
+app.include_router(datasource.router, prefix="/api/datasource", tags=["Data Source"])
 app.include_router(ingestion.router, prefix="/api", tags=["Ingestion"])
 app.include_router(query.router, prefix="/api", tags=["Query"])
 app.include_router(schema.router, prefix="/api", tags=["Schema"])

@@ -5,36 +5,26 @@ import shutil
 import tempfile
 import uuid
 
-from ..services.schema_discovery import SchemaDiscovery
+from ..services.engine_manager import ALLOWED_EXTENSIONS, get_engine_manager
 
 router = APIRouter()
 job_statuses: Dict[str, str] = {}
 
-ALLOWED_EXTENSIONS = {".pdf", ".docx", ".txt"}
 MAX_FILE_SIZE_BYTES = 20 * 1024 * 1024  # 20MB per file
-
-
-@router.post("/connect-database")
-async def connect_database(payload: Dict[str, str]):
-    connection_string = payload.get("connection_string")
-    if not connection_string:
-        raise HTTPException(status_code=400, detail="Connection string is required.")
-    try:
-        discovery = SchemaDiscovery()
-        schema = discovery.analyze_database(connection_string)
-        return schema
-    except ConnectionError as e:
-        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/upload-documents")
 async def upload_documents(background_tasks: BackgroundTasks, files: List[UploadFile] = File(...)):
+    """
+    Accepts a mixed batch of files. PDF/DOCX/TXT are chunked and embedded
+    for semantic search; CSV/XLSX are loaded into queryable SQL tables.
+    Once processing finishes, the uploaded data is activated automatically
+    so it can be queried right away.
+    """
     if not files:
         raise HTTPException(status_code=400, detail="No files were provided.")
 
-    document_processor = getattr(router, "document_processor", None)
-    if document_processor is None:
-        raise HTTPException(status_code=503, detail="Document processor is not ready yet.")
+    manager = get_engine_manager()
 
     job_id = str(uuid.uuid4())
     job_statuses[job_id] = "In Progress"
@@ -50,7 +40,10 @@ async def upload_documents(background_tasks: BackgroundTasks, files: List[Upload
             if extension not in ALLOWED_EXTENSIONS:
                 raise HTTPException(
                     status_code=400,
-                    detail=f"Unsupported file type '{extension}'. Allowed types: PDF, DOCX, TXT.",
+                    detail=(
+                        f"Unsupported file type '{extension}'. "
+                        "Allowed types: PDF, DOCX, TXT, CSV, XLSX."
+                    ),
                 )
 
             file_path = os.path.join(upload_dir, safe_name)
@@ -71,9 +64,7 @@ async def upload_documents(background_tasks: BackgroundTasks, files: List[Upload
         shutil.rmtree(upload_dir, ignore_errors=True)
         raise HTTPException(status_code=500, detail=f"Failed to save uploaded files: {e}")
 
-    background_tasks.add_task(
-        document_processor.process_documents, file_paths, job_id, job_statuses
-    )
+    background_tasks.add_task(manager.process_uploaded_batch, file_paths, job_id, job_statuses)
 
     return {"message": "Upload successful, processing started.", "job_id": job_id}
 
