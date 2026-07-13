@@ -13,6 +13,31 @@ const SOURCE_LABELS = {
     demo: 'Demo Database',
 };
 
+const DemoSchemaCard = ({ schema }) => {
+    const tables = schema?.tables || [];
+    return (
+        <div className="card">
+            <h2>🚀 Demo Database</h2>
+            <p>You're exploring a preloaded sample dataset — no setup needed. Here's what's inside:</p>
+            <div className="demo-schema-grid">
+                {tables.map((table) => (
+                    <div className="demo-schema-table" key={table.name}>
+                        <h5>{table.name}</h5>
+                        <ul>
+                            {table.columns.map((col) => (
+                                <li key={col.name}>
+                                    <span>{col.name}</span>
+                                    <span className="demo-schema-type">{col.type}</span>
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+};
+
 function App() {
     const [landingMode, setLandingMode] = useState(null); // null | 'postgres' | 'upload' | 'demo'
     const [demoLoading, setDemoLoading] = useState(false);
@@ -134,6 +159,8 @@ function App() {
 
                         {landingMode === 'upload' ? (
                             <DocumentUploader onReady={handleUploadReady} allowStructured title="📁 Upload More Files" />
+                        ) : landingMode === 'demo' ? (
+                            <DemoSchemaCard schema={activeStatus?.schema} />
                         ) : (
                             <DocumentUploader
                                 onReady={handleUploadReady}

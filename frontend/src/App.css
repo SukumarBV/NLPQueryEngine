@@ -288,3 +288,52 @@ button:disabled {
 .upload-groups li button:hover {
     background: #ffbaba;
 }
+
+/* ---------- Demo database schema card ---------- */
+
+.demo-schema-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 14px;
+    margin-top: 14px;
+}
+
+.demo-schema-table {
+    background: #f7f9fc;
+    border: 1px solid #e5e9f0;
+    border-radius: 8px;
+    padding: 12px 14px;
+}
+
+.demo-schema-table h5 {
+    margin: 0 0 8px 0;
+    color: #0b3c91;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.demo-schema-table ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.demo-schema-table li {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    font-size: 13px;
+    padding: 3px 0;
+    border-bottom: 1px dashed #e5e9f0;
+}
+
+.demo-schema-table li:last-child {
+    border-bottom: none;
+}
+
+.demo-schema-type {
+    color: #999;
+    font-size: 11px;
+    white-space: nowrap;
+}
