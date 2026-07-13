@@ -33,7 +33,7 @@ const DataSourceSelector = ({ onSelectMode, loadingMode }) => {
         <div className="datasource-selector">
             <h2 style={{ textAlign: 'center' }}>Choose Your Data Source</h2>
             <p className="selector-intro">
-                Connect a live database, upload your own files, or jump straight into a sample dataset — no setup required.
+                Connect a live database, upload your own files, or jump straight into a sample dataset with no setup required.
             </p>
             <div className="datasource-grid">
                 {CARDS.map((card) => (

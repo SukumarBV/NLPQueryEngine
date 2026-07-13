@@ -17,7 +17,7 @@ const DemoSchemaCard = ({ schema }) => {
     const tables = schema?.tables || [];
     return (
         <div className="card">
-            <h2>🚀 Demo Database</h2>
+            <h2> Demo Database</h2>
             <p>You're exploring a preloaded sample dataset — no setup needed. Here's what's inside:</p>
             <div className="demo-schema-grid">
                 {tables.map((table) => (
@@ -130,7 +130,7 @@ function App() {
     return (
         <div className="App">
             <header className="App-header">
-                <h1>AI-Powered NLP Query Engine</h1>
+                <h1>AI-Powered Data Intelligence Platform</h1>
                 <p>Dynamically query any SQL database and document set with natural language.</p>
             </header>
             <main>
